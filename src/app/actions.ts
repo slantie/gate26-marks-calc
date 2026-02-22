@@ -84,12 +84,25 @@ export async function analyzeResponseSheet(url: string, subject: 'CS1' | 'CS2' |
             const mapping: Record<string, string> = {};
             qRow.find("td").each((_, td) => {
                 const text = $(td).text().trim();
-                if (["A.", "B.", "C.", "D."].includes(text)) {
+                if (["A.", "B.", "C.", "D.", "1.", "2.", "3.", "4."].includes(text)) {
                     const img = $(td).find("img");
                     if (img.length > 0) {
                         const src = img.attr("src") || "";
                         const filename = src.split("/").pop()?.replace(".png", "") || "";
-                        const masterOpt = filename.slice(-1).toUpperCase();
+                        let masterOpt = filename.slice(-1).toUpperCase();
+                        
+                        // Fallback: if filename is like q1v1.png, we need the digit before 'v'
+                        if (filename.includes("v")) {
+                           const parts = filename.split("v");
+                           masterOpt = parts[0].slice(-1).toUpperCase();
+                        }
+
+                        // Normalize numeric master options to A, B, C, D
+                        if (masterOpt === "1") masterOpt = "A";
+                        else if (masterOpt === "2") masterOpt = "B";
+                        else if (masterOpt === "3") masterOpt = "C";
+                        else if (masterOpt === "4") masterOpt = "D";
+
                         mapping[text[0]] = masterOpt;
                     }
                 }
@@ -174,9 +187,18 @@ export async function analyzeResponseSheet(url: string, subject: 'CS1' | 'CS2' |
 
             if (kData.type === "MCQ") {
                 if (rData.chosen_opt) {
-                    const localAns = rData.chosen_opt.toUpperCase();
+                    let localAns = rData.chosen_opt.toUpperCase();
+                    // Fallback for numeric chosen options (1, 2, 3, 4 -> A, B, C, D) 
+                    // if they are not directly in the mapping
+                    if (!rData.mapping[localAns]) {
+                        if (localAns === "1") localAns = "A";
+                        else if (localAns === "2") localAns = "B";
+                        else if (localAns === "3") localAns = "C";
+                        else if (localAns === "4") localAns = "D";
+                    }
+
                     const masterAns = rData.mapping[localAns] || "";
-                    qInfo.given_ans = masterAns;
+                    qInfo.given_ans = masterAns || rData.chosen_opt; // Fallback to raw if mapping fails
                     if (masterAns === kData.key.toUpperCase()) {
                         isCorrect = true;
                     }
@@ -184,7 +206,16 @@ export async function analyzeResponseSheet(url: string, subject: 'CS1' | 'CS2' |
             } else if (kData.type === "MSQ") {
                 if (rData.chosen_opt) {
                     const localOpts = rData.chosen_opt.split(",").map((x: string) => x.trim().toUpperCase());
-                    const masterOptsArr = localOpts.map((x: string) => rData.mapping[x] || "").filter(Boolean);
+                    const masterOptsArr = localOpts.map((x: string) => {
+                        let opt = x;
+                        if (!rData.mapping[opt]) {
+                            if (opt === "1") opt = "A";
+                            else if (opt === "2") opt = "B";
+                            else if (opt === "3") opt = "C";
+                            else if (opt === "4") opt = "D";
+                        }
+                        return rData.mapping[opt] || "";
+                    }).filter(Boolean);
                     const masterOpts = new Set(masterOptsArr);
                     qInfo.given_ans = Array.from(masterOpts).sort().join(";");
 
