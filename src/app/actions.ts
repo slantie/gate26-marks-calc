@@ -114,7 +114,7 @@ export async function analyzeResponseSheet(url: string, subject: 'CS1' | 'CS2' |
                 }
             });
 
-            if (qType === "NAT" && (statusStr === "Answered" || statusStr === "Answered and Marked for Review")) {
+            if (qType === "NAT" && (statusStr === "Answered" || statusStr === "Answered and Marked for Review" || statusStr === "Marked For Review")) {
                 qRow.find("td").each((i, td) => {
                     if ($(td).text().trim().includes("Given Answer :")) {
                         givenAns = $(td).next("td").text().trim();
@@ -163,7 +163,7 @@ export async function analyzeResponseSheet(url: string, subject: 'CS1' | 'CS2' |
                 marks_obtained: 0
             };
 
-            if (!rData || !["Answered", "Answered and Marked for Review"].includes(rData.status)) {
+            if (!rData || !["Answered", "Answered and Marked for Review", "Marked For Review"].includes(rData.status)) {
                 unansweredCount++;
                 questionsData.push(qInfo);
                 continue;
